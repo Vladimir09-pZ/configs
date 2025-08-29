@@ -1,0 +1,60 @@
+-- plugins/grug-far.lua
+return {
+  "MagicDuck/grug-far.nvim",
+  keys = {
+    -- 1) Normal/Visual: open grug-far scoped to *current file*.
+    --    Prefills search with visual selection (if any),
+    --    otherwise with last / search or the cword as a fallback.
+    {
+      "<leader>sf",
+      function()
+        local gf = require("grug-far")
+        local mode = vim.fn.mode()
+        local paths = vim.fn.expand("%")          -- current buffer file
+        if mode == "v" or mode == "V" or mode == "\22" then
+          -- visual mode: prefill with selection, only current file
+          gf.with_visual_selection({ prefills = { paths = paths } })
+        else
+          -- normal mode: prefer last search (@/), else word under cursor
+          local search = vim.fn.getreg("/")
+          if not search or search == "" then
+            search = vim.fn.expand("<cword>")
+          else
+            -- If last search was a \<word\> search (e.g. by *), wrap as \b...\b for ripgrep
+            if vim.startswith(search, "\\<") and vim.endswith(search, "\\>") then
+              search = "\\b" .. search:sub(3, -3) .. "\\b"
+            end
+          end
+          gf.open({ prefills = { paths = paths, search = search } })
+        end
+      end,
+      desc = "grug-far: current file, prefill search (visual/@//cword)",
+      mode = { "n", "v" },
+    },
+
+    -- 2) Operate strictly *within* the visual range (keeps all ops inside your selection).
+    { "<leader>si", "<cmd>GrugFarWithin<CR>", desc = "grug-far: search within visual range", mode = { "x" } },
+
+    -- 3) Handy: use the exact word under cursor as the search and scope to this file.
+    {
+      "<leader>sw",
+      function()
+        require("grug-far").open({
+          prefills = {
+            search = vim.fn.expand("<cword>"),
+            paths = vim.fn.expand("%"),
+          },
+        })
+      end,
+      desc = "grug-far: word under cursor in current file",
+      mode = "n",
+    },
+  },
+  config = function()
+    require("grug-far").setup({
+      -- Tweak to taste; defaults are grand. Left here if you fancy.
+      -- resultLocation = { showNumberLabel = true }, -- e.g. show 1..n labels
+      -- transient = true, -- auto-clean buffer when closed
+    })
+  end,
+}
